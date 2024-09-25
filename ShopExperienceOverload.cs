@@ -41,7 +41,7 @@ namespace ShopExperienceOverload
         {
             if (JsonExpOverloads == null || SHOP_API == null) return;
 
-            SHOP_API.CreateCategory(CategoryName, "Перегрузка опыта");
+            SHOP_API.CreateCategory(CategoryName, "РџРµСЂРµРіСЂСѓР·РєР° РѕРїС‹С‚Р°");
 
             var sortedItems = JsonExpOverloads
                 .Properties()
