@@ -11,7 +11,7 @@ namespace ShopExperienceOverload
         public override string ModuleName => "[SHOP] Experience Overload";
         public override string ModuleDescription => "";
         public override string ModuleAuthor => "E!N";
-        public override string ModuleVersion => "v1.0";
+        public override string ModuleVersion => "v1.0.1";
 
         private IShopApi? SHOP_API;
         private const string CategoryName = "ExpOverload";
@@ -65,7 +65,7 @@ namespace ShopExperienceOverload
             RegisterListener<Listeners.OnClientDisconnect>(playerSlot => playerExpOverloads[playerSlot] = null!);
         }
 
-        public void OnClientBuyItem(CCSPlayerController player, int itemId, string categoryName, string uniqueName, int buyPrice, int sellPrice, int duration, int count)
+        public HookResult OnClientBuyItem(CCSPlayerController player, int itemId, string categoryName, string uniqueName, int buyPrice, int sellPrice, int duration, int count)
         {
             if (TryGetItemLevel(uniqueName, out int level))
             {
@@ -76,6 +76,33 @@ namespace ShopExperienceOverload
             {
                 Logger.LogError($"{uniqueName} has invalid or missing 'lvl' in config!");
             }
+            return HookResult.Continue;
+        }
+
+        public HookResult OnClientToggleItem(CCSPlayerController player, int itemId, string uniqueName, int state)
+        {
+            if (state == 1 && TryGetItemLevel(uniqueName, out int level))
+            {
+                playerExpOverloads[player.Slot] = new PlayerExpOverload(level, itemId);
+            }
+            else if (state == 0)
+            {
+                OnClientSellItem(player, itemId, uniqueName, 0);
+            }
+            UpdatePlayerExpOverload();
+            return HookResult.Continue;
+        }
+
+        public HookResult OnClientSellItem(CCSPlayerController player, int itemId, string uniqueName, int sellPrice)
+        {
+            playerExpOverloads[player.Slot] = null!;
+            if (player.InventoryServices != null)
+            {
+                player.InventoryServices.PersonaDataXpTrailLevel = 0;
+                Utilities.SetStateChanged(player, "CCSPlayerController", "m_pInventoryServices");
+            }
+
+            return HookResult.Continue;
         }
 
         private void UpdatePlayerExpOverload()
@@ -90,30 +117,7 @@ namespace ShopExperienceOverload
             }
         }
 
-        public void OnClientToggleItem(CCSPlayerController player, int itemId, string uniqueName, int state)
-        {
-            if (state == 1 && TryGetItemLevel(uniqueName, out int level))
-            {
-                playerExpOverloads[player.Slot] = new PlayerExpOverload(level, itemId);
-            }
-            else if (state == 0)
-            {
-                OnClientSellItem(player, itemId, uniqueName, 0);
-            }
-            UpdatePlayerExpOverload();
-        }
-
-        public void OnClientSellItem(CCSPlayerController player, int itemId, string uniqueName, int sellPrice)
-        {
-            playerExpOverloads[player.Slot] = null!;
-            if (player.InventoryServices != null)
-            {
-                player.InventoryServices.PersonaDataXpTrailLevel = 0;
-                Utilities.SetStateChanged(player, "CCSPlayerController", "m_pInventoryServices");
-            }
-        }
-
-        private bool TryGetItemLevel(string uniqueName, out int level)
+        private static bool TryGetItemLevel(string uniqueName, out int level)
         {
             level = 0;
             if (JsonExpOverloads != null && JsonExpOverloads.TryGetValue(uniqueName, out var obj) && obj is JObject jsonItem && jsonItem["lvl"] != null && jsonItem["lvl"]!.Type != JTokenType.Null)
